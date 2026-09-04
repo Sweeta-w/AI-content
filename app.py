@@ -4,14 +4,14 @@ from groq import Groq
 
 # Page Configuration
 st.set_page_config(
-    page_title="AI Content Assistant",
+    page_title="AI Content Assistant Pro",
     page_icon="✨",
     layout="centered"
 )
 
 # App Title
-st.title("✨ AI Content Assistant")
-st.write("Generate high-converting posts, captions, and hashtags in seconds.")
+st.title("✨ AI Content Assistant Pro")
+st.write("Generate high-converting posts, captions, hashtags, and visual prompts in seconds.")
 
 # Securely retrieve Groq API Key
 api_key = st.secrets.get("GROQ_API_KEY", "")
@@ -33,6 +33,10 @@ with st.form("content_form"):
             "Content Type", 
             ["Educational", "Promotional", "Storytelling", "Thought Leadership", "Product Launch"]
         )
+        language = st.selectbox(
+            "Language",
+            ["English", "Urdu", "Roman Urdu", "Spanish", "French"]
+        )
         
     with col2:
         tone = st.selectbox(
@@ -43,6 +47,7 @@ with st.form("content_form"):
             "Target Audience", 
             placeholder="e.g., Software Engineers, Small Business Owners"
         )
+        include_image_prompt = st.checkbox("Generate Matching Image Prompt", value=True)
     
     topic = st.text_area(
         "Topic / Key Points", 
@@ -61,6 +66,11 @@ if submit_btn:
         try:
             client = Groq(api_key=api_key)
             
+            image_instruction = (
+                "5. At the very end, include an 'IMAGE PROMPT:' section giving a detailed AI visual generator prompt."
+                if include_image_prompt else ""
+            )
+
             prompt = f"""
             You are an expert social media manager. Generate a complete, engaging social media post based on the following options:
 
@@ -68,13 +78,16 @@ if submit_btn:
             - Content Type: {content_type}
             - Tone: {tone}
             - Target Audience: {target_audience if target_audience else 'General Audience'}
+            - Language: {language}
             - Topic: {topic}
 
             CRITICAL FORMATTING INSTRUCTIONS:
+            - Write the post in {language}.
             - Do NOT use markdown symbols like asterisks (**), hashtags for headings (#), or underscores.
             - Write in plain text format suitable for direct copy-pasting to social media.
             - Use standard emojis for visual emphasis instead of markdown bolding.
-            - Provide 5–8 relevant hashtags at the very bottom.
+            - Provide 5–8 relevant hashtags at the bottom of the post.
+            {image_instruction}
             """
 
             with st.spinner("Crafting your post..."):
@@ -85,12 +98,10 @@ if submit_btn:
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.7,
-                    max_tokens=1000
+                    max_tokens=1200
                 )
                 
                 raw_text = response.choices[0].message.content
-                
-                # Python cleanup: removes any ** or * symbols if model still outputs them
                 clean_text = re.sub(r'\*+', '', raw_text)
                 
                 st.session_state["generated_post"] = clean_text
@@ -99,23 +110,41 @@ if submit_btn:
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
 
-# Display Generated Output & Export Options
+# Display Generated Output, Analytics & Export Options
 if "generated_post" in st.session_state:
-    st.success("Post Generated Successfully!")
-    st.subheader("Your Generated Post")
+    post_text = st.session_state["generated_post"]
+    selected_platform = st.session_state.get("post_platform", "LinkedIn")
     
-    # Plain text area for easy select-all or copy
-    st.text_area("Copy Clean Post:", st.session_state["generated_post"], height=350)
+    st.success("Post Generated Successfully!")
+    
+    # Character & Word Analytics
+    char_count = len(post_text)
+    word_count = len(post_text.split())
+    
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("Character Count", char_count)
+    col_m2.metric("Word Count", word_count)
+    
+    # Platform Limit Checks
+    limits = {"Twitter / X": 280, "LinkedIn": 3000, "Instagram": 2200, "Facebook": 63206}
+    platform_limit = limits.get(selected_platform, 3000)
+    
+    if char_count > platform_limit:
+        col_m3.error(f"Exceeds {selected_platform} limit ({platform_limit} chars)!")
+    else:
+        col_m3.success(f"Within {selected_platform} limit")
+
+    st.subheader("Your Generated Post")
+    st.code(post_text, language="text")
 
     # File Download Options
-    file_prefix = st.session_state.get("post_platform", "social_media").lower().replace(" / ", "_").replace(" ", "_")
+    file_prefix = selected_platform.lower().replace(" / ", "_").replace(" ", "_")
     
     col_dl1, col_dl2 = st.columns(2)
-    
     with col_dl1:
         st.download_button(
             label="📄 Download .txt",
-            data=st.session_state["generated_post"],
+            data=post_text,
             file_name=f"{file_prefix}_post.txt",
             mime="text/plain",
             use_container_width=True
@@ -124,7 +153,7 @@ if "generated_post" in st.session_state:
     with col_dl2:
         st.download_button(
             label="📝 Download .md",
-            data=st.session_state["generated_post"],
+            data=post_text,
             file_name=f"{file_prefix}_post.md",
             mime="text/markdown",
             use_container_width=True
