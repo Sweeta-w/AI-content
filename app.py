@@ -11,6 +11,9 @@ st.set_page_config(
 
 # App Title
 st.title("✨ AI Content Assistant Pro")
+# Initialize generation history in session state
+if "history" not in st.session_state:
+    st.session_state["history"] = []
 st.write("Generate high-converting posts, captions, hashtags, and visual prompts in seconds.")
 
 # Securely retrieve Groq API Key
@@ -57,6 +60,7 @@ with st.form("content_form"):
     submit_btn = st.form_submit_button("Generate Content 🚀")
 
 # Generation Logic
+# Generation Logic
 if submit_btn:
     if not api_key:
         st.error("Please provide a valid Groq API Key to proceed.")
@@ -66,8 +70,10 @@ if submit_btn:
         try:
             client = Groq(api_key=api_key)
             
+            # Fixed Image Prompt Directive
             image_instruction = (
-                "5. At the very end, include an 'IMAGE PROMPT:' section giving a detailed AI visual generator prompt."
+                "\n\nALSO PROVIDE A MATCHING IMAGE PROMPT AT THE VERY END:\n"
+                "IMAGE PROMPT: A detailed, high-quality prompt for Midjourney/DALL-E describing a matching visual for this post."
                 if include_image_prompt else ""
             )
 
@@ -83,8 +89,8 @@ if submit_btn:
 
             CRITICAL FORMATTING INSTRUCTIONS:
             - Write the post in {language}.
-            - Do NOT use markdown symbols like asterisks (**), hashtags for headings (#), or underscores.
-            - Write in plain text format suitable for direct copy-pasting to social media.
+            - Do NOT use markdown symbols like asterisks (**), hashtags for headings (#), or underscores in the main post.
+            - Write in plain text format suitable for direct copy-pasting.
             - Use standard emojis for visual emphasis instead of markdown bolding.
             - Provide 5–8 relevant hashtags at the bottom of the post.
             {image_instruction}
@@ -92,7 +98,7 @@ if submit_btn:
 
             with st.spinner("Crafting your post..."):
                 response = client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are a professional social media content creator."},
                         {"role": "user", "content": prompt}
@@ -106,10 +112,16 @@ if submit_btn:
                 
                 st.session_state["generated_post"] = clean_text
                 st.session_state["post_platform"] = platform
+                
+                # Append to history list
+                st.session_state["history"].append({
+                    "platform": platform,
+                    "topic": topic[:30] + "..." if len(topic) > 30 else topic,
+                    "content": clean_text
+                })
 
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
-
 # Display Generated Output, Analytics & Export Options
 if "generated_post" in st.session_state:
     post_text = st.session_state["generated_post"]
@@ -158,3 +170,11 @@ if "generated_post" in st.session_state:
             mime="text/markdown",
             use_container_width=True
         )
+# Sidebar History Display
+if st.session_state["history"]:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📜 Generation History")
+    
+    for idx, item in enumerate(reversed(st.session_state["history"])):
+        with st.sidebar.expander(f"#{len(st.session_state['history']) - idx}: {item['platform']} - {item['topic']}"):
+            st.code(item["content"], language="text")
