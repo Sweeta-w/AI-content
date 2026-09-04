@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 from groq import Groq
 
@@ -69,16 +70,16 @@ if submit_btn:
             - Target Audience: {target_audience if target_audience else 'General Audience'}
             - Topic: {topic}
 
-            Structuring Requirements:
-            1. Create an attention-grabbing hook suited for {platform}.
-            2. Write the main content tailored for {target_audience if target_audience else 'General Audience'} using a {tone} tone.
-            3. Include a clear Call to Action (CTA).
-            4. Provide 5–8 relevant, trending hashtags at the bottom.
+            CRITICAL FORMATTING INSTRUCTIONS:
+            - Do NOT use markdown symbols like asterisks (**), hashtags for headings (#), or underscores.
+            - Write in plain text format suitable for direct copy-pasting to social media.
+            - Use standard emojis for visual emphasis instead of markdown bolding.
+            - Provide 5–8 relevant hashtags at the very bottom.
             """
 
             with st.spinner("Crafting your post..."):
                 response = client.chat.completions.create(
-                    model="openai/gpt-oss-120b",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are a professional social media content creator."},
                         {"role": "user", "content": prompt}
@@ -87,7 +88,12 @@ if submit_btn:
                     max_tokens=1000
                 )
                 
-                st.session_state["generated_post"] = response.choices[0].message.content
+                raw_text = response.choices[0].message.content
+                
+                # Python cleanup: removes any ** or * symbols if model still outputs them
+                clean_text = re.sub(r'\*+', '', raw_text)
+                
+                st.session_state["generated_post"] = clean_text
                 st.session_state["post_platform"] = platform
 
         except Exception as e:
@@ -98,8 +104,8 @@ if "generated_post" in st.session_state:
     st.success("Post Generated Successfully!")
     st.subheader("Your Generated Post")
     
-    # Built-in Copy Button via st.code
-    st.code(st.session_state["generated_post"], language="text")
+    # Plain text area for easy select-all or copy
+    st.text_area("Copy Clean Post:", st.session_state["generated_post"], height=350)
 
     # File Download Options
     file_prefix = st.session_state.get("post_platform", "social_media").lower().replace(" / ", "_").replace(" ", "_")
