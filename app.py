@@ -8,16 +8,16 @@ st.set_page_config(
     layout="centered"
 )
 
-# App Title & Subtitle
+# App Title
 st.title("✨ AI Content Assistant")
 st.write("Generate high-converting posts, captions, and hashtags in seconds.")
 
-# Securely retrieve Groq API Key from Streamlit Secrets or Sidebar Input
+# Securely retrieve Groq API Key
 api_key = st.secrets.get("GROQ_API_KEY", "")
 
 if not api_key:
     api_key = st.sidebar.text_input("Enter Groq API Key:", type="password")
-    st.sidebar.caption("Get your free key at [console.groq.com](https://console.groq.com/keys)")
+    st.sidebar.caption("Get your free key at console.groq.com")
 
 # User Inputs Form
 with st.form("content_form"):
@@ -87,11 +87,39 @@ if submit_btn:
                     max_tokens=1000
                 )
                 
-                generated_post = response.choices[0].message.content
-
-            st.success("Post Generated Successfully!")
-            st.subheader("Your Generated Post")
-            st.text_area("Copy your post:", generated_post, height=350)
+                st.session_state["generated_post"] = response.choices[0].message.content
+                st.session_state["post_platform"] = platform
 
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
+
+# Display Generated Output & Export Options
+if "generated_post" in st.session_state:
+    st.success("Post Generated Successfully!")
+    st.subheader("Your Generated Post")
+    
+    # Built-in Copy Button via st.code
+    st.code(st.session_state["generated_post"], language="text")
+
+    # File Download Options
+    file_prefix = st.session_state.get("post_platform", "social_media").lower().replace(" / ", "_").replace(" ", "_")
+    
+    col_dl1, col_dl2 = st.columns(2)
+    
+    with col_dl1:
+        st.download_button(
+            label="📄 Download .txt",
+            data=st.session_state["generated_post"],
+            file_name=f"{file_prefix}_post.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+        
+    with col_dl2:
+        st.download_button(
+            label="📝 Download .md",
+            data=st.session_state["generated_post"],
+            file_name=f"{file_prefix}_post.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
