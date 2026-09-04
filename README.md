@@ -36,5 +36,5 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-👩‍💻 Author & Connect
-Developed By Sweeta <a href="https://www.linkedin.com/in/sweeta-k-7103972a6/">Linkdin</a> as part of the Generative AI initiative with Pak Angels & ASPIRE Pakistan Program 
+##👩‍💻 Author & Connect
+Developed By ##<a href="https://www.linkedin.com/in/sweeta-k-7103972a6/">Sweeta</a> as part of the Generative AI initiative with Pak Angels & ASPIRE Pakistan Program 
